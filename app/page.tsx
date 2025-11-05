@@ -1,6 +1,5 @@
+import Signup from '@/components/signup'
 import React from 'react'
-import ChatBot from './components/chatBot'
-import Signup from './components/signup'
 const page = () => {
   return (
     <Signup/>
