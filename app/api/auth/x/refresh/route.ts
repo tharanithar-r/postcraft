@@ -1,28 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { supabase } from '@/lib/supabase';
-import { refreshXToken, isTokenExpired } from '@/lib/x-token-refresh';
+import { NextResponse } from 'next/server';
+import { createClient } from '@/utils/supabase/server';
+import { refreshPlatformToken, isTokenExpired } from '@/lib/token-refresh';
 
-/**
- * API endpoint to manually refresh X OAuth tokens
- * GET /api/auth/x/refresh
- */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    // Check if user is authenticated
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized. Please login first.' },
         { status: 401 }
       );
     }
 
-    // Get user's current X tokens from Supabase
     const { data: tokenData, error: fetchError } = await supabase
       .from('social_accounts')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
+      .eq('platform', 'x')
       .single();
 
     if (fetchError || !tokenData) {
@@ -32,7 +28,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Check if token needs refresh
     if (!isTokenExpired(tokenData.expires_at)) {
       return NextResponse.json({
         message: 'Token is still valid',
@@ -40,13 +35,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Refresh the token
-    const refreshResult = await refreshXToken(tokenData.refresh_token);
+    const refreshResult = await refreshPlatformToken('x', tokenData.refresh_token);
 
     if (!refreshResult.success) {
+      const statusCode = refreshResult.needsReconnect ? 401 : 500;
       return NextResponse.json(
-        { error: refreshResult.error || 'Token refresh failed' },
-        { status: 500 }
+        {
+          error: refreshResult.error || 'Token refresh failed',
+          needsReconnect: refreshResult.needsReconnect
+        },
+        { status: statusCode }
       );
     }
 
@@ -58,7 +56,8 @@ export async function GET(req: NextRequest) {
         refresh_token: refreshResult.refreshToken,
         expires_at: refreshResult.expiresAt,
       })
-      .eq('user_id', session.user.id);
+      .eq('user_id', user.id)
+      .eq('platform', 'x');
 
     if (updateError) {
       console.error('Failed to update tokens:', updateError);

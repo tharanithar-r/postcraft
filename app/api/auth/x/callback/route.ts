@@ -104,6 +104,8 @@ export async function GET(req: NextRequest) {
         access_token,
         refresh_token,
         expires_at: expiresAt,
+      }, {
+        onConflict: 'user_id,platform'
       });
 
     if (dbError) {

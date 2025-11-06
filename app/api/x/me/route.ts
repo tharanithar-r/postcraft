@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { createClient } from '@/utils/supabase/server';
 import { getXUserProfile } from '@/lib/x-api-client';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized. Please login first.' },
         { status: 401 }
       );
     }
 
-    const result = await getXUserProfile(session.user.id);
+    const result = await getXUserProfile(user.id);
 
     if (!result.success) {
       return NextResponse.json(
