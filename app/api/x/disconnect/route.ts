@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE() {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -16,6 +16,7 @@ export async function DELETE(req: NextRequest) {
     const { data: tokenData } = await supabase
       .from('social_accounts')
       .select('access_token')
+      .eq('platform','x')
       .eq('user_id', user.id)
       .single();
 
@@ -44,7 +45,8 @@ export async function DELETE(req: NextRequest) {
     const { error: deleteError } = await supabase
       .from('social_accounts')
       .delete()
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('platform', 'x');
 
     if (deleteError) {
       console.error('Failed to delete tokens:', deleteError);

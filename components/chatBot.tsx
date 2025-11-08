@@ -30,13 +30,14 @@ interface GeneratedPost {
   userId: string
   postId: string
   generated_content: {
-    [key: string]: {
+    posts?: Array<{
+      platform: string
       post_text: string
       hashtags: string[]
-      image_description: string
-    }
+    }>
+    image_description?: string
+    image_url?: string
   }
-  image_url: string
 }
 
 export default function ChatBot() {
@@ -58,17 +59,19 @@ export default function ChatBot() {
   const platformIcons: { [key: string]: string } = {
     x: "𝕏",
     linkedin: "in",
-    facebook: "f"
+    facebook: "f",
+    discord: "D"
   }
 
   const platformColors: { [key: string]: string } = {
     x: "bg-black",
     linkedin: "bg-blue-600",
-    facebook: "bg-blue-500"
+    facebook: "bg-blue-500",
+    discord: "bg-indigo-500"
   }
 
   const newChat = () => {
-    const id = Date.now().toString()
+    const id = Date.now().toString();
     console.log(id);
     const chat: Chat = { id, title: "New Chat", messages: [] }
     setChats([chat, ...chats])
@@ -82,7 +85,6 @@ export default function ChatBot() {
     }
   }
 
-  // Fetch user and connected platforms
   useEffect(() => {
     async function fetchUserData() {
       const supabase = createClient()
@@ -105,7 +107,6 @@ export default function ChatBot() {
     fetchUserData()
   }, [])
 
-  // Close platform menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (platformMenuRef.current && !platformMenuRef.current.contains(event.target as Node)) {
@@ -150,7 +151,6 @@ export default function ChatBot() {
 
     try {
       const refreshResults = await checkAndRefreshAllPlatforms(userId, selectedPlatforms)
-      console.log("refresh",refreshResults);
 
       // Check if any platform needs reconnection
       const failedPlatforms = Object.entries(refreshResults)
@@ -190,7 +190,7 @@ export default function ChatBot() {
         }
       }
 
-      const response = await fetch('http://localhost:5678/webhook/generate-draft', {
+      const response = await fetch('http://localhost:5678/webhook-test/generate-draft', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -208,14 +208,11 @@ export default function ChatBot() {
 
       const data = await response.json()
 
-      const { image_url, ...platformContent } = data.generated_content || {}
-
       const postData: GeneratedPost = {
         success: data.success || true,
         userId: data.userId || userId!,
         postId: data.postId,
-        generated_content: platformContent,
-        image_url: image_url || '',
+        generated_content: data.generated_content || {},
       }
 
       const assistantMessage: Message = {
@@ -304,7 +301,7 @@ export default function ChatBot() {
         }
       }
 
-      const response = await fetch('http://localhost:5678/webhook/approve-post', {
+      const response = await fetch('http://localhost:5678/webhook-test/approve-post', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -518,7 +515,7 @@ export default function ChatBot() {
                       {msg.postData && (
                         <div className="mt-4 space-y-4">
                           {(() => {
-                            const imageUrl = msg.postData.image_url
+                            const imageUrl = msg.postData.generated_content?.image_url
 
                             if (!imageUrl) return null
 
@@ -539,31 +536,65 @@ export default function ChatBot() {
                             )
                           })()}
 
-                          {msg.postData.generated_content && Object.entries(msg.postData.generated_content).map(([platform, content]) => {
-                            console.log(content);
-                            if (!content || !content.post_text) return null
+                          {(() => {
+                            const generatedContent = msg.postData.generated_content
 
-                            return (
-                              <div key={platform} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className={`w-6 h-6 ${platformColors[platform.toLowerCase()] || 'bg-gray-600'} rounded flex items-center justify-center text-white text-xs font-bold`}>
-                                    {platformIcons[platform.toLowerCase()] || platform.charAt(0)}
+                            // New format: posts array
+                            if (generatedContent?.posts && Array.isArray(generatedContent.posts)) {
+                              return generatedContent.posts.map((post, index) => {
+                                if (!post || !post.post_text) return null
+
+                                return (
+                                  <div key={`${post.platform}-${index}`} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className={`w-6 h-6 ${platformColors[post.platform.toLowerCase()] || 'bg-gray-600'} rounded flex items-center justify-center text-white text-xs font-bold`}>
+                                        {platformIcons[post.platform.toLowerCase()] || post.platform.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span className="text-sm font-semibold capitalize text-gray-300">{post.platform}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{post.post_text}</p>
+                                    {post.hashtags && post.hashtags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {post.hashtags.map((tag, i) => (
+                                          <span key={i} className="text-xs text-emerald-400">
+                                            {tag.startsWith('#') ? tag : `#${tag}`}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                  <span className="text-sm font-semibold capitalize text-gray-300">{platform}</span>
-                                </div>
-                                <p className="text-sm text-gray-300 whitespace-pre-wrap">{content.post_text}</p>
-                                {content.hashtags && content.hashtags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-2">
-                                    {content.hashtags.map((tag, i) => (
-                                      <span key={i} className="text-xs text-emerald-400">
-                                        {tag.startsWith('#') ? tag : `#${tag}`}
-                                      </span>
-                                    ))}
+                                )
+                              })
+                            }
+
+                            // Legacy format: platform as object keys
+                            return Object.entries(generatedContent || {})
+                              .filter(([key]) => key !== 'posts' && key !== 'image_url' && key !== 'image_description')
+                              .map(([platform, content]: [string, any]) => {
+                                if (!content || !content.post_text) return null
+
+                                return (
+                                  <div key={platform} className="bg-gray-900/50 rounded-lg p-3 border border-gray-700">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className={`w-6 h-6 ${platformColors[platform.toLowerCase()] || 'bg-gray-600'} rounded flex items-center justify-center text-white text-xs font-bold`}>
+                                        {platformIcons[platform.toLowerCase()] || platform.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span className="text-sm font-semibold capitalize text-gray-300">{platform}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{content.post_text}</p>
+                                    {content.hashtags && content.hashtags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {content.hashtags.map((tag: string, i: number) => (
+                                          <span key={i} className="text-xs text-emerald-400">
+                                            {tag.startsWith('#') ? tag : `#${tag}`}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            )
-                          })}
+                                )
+                              })
+                          })()}
 
                           {/* Action Buttons */}
                           <div className="flex gap-2 mt-4">

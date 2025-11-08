@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
       return NextResponse.redirect(
         new URL('/login?error=unauthorized', req.url)
@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
     const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
 
     let username = null;
+    let userID = null;
     try {
       const userResponse = await fetch('https://api.x.com/2/users/me', {
         headers: {
@@ -90,6 +91,7 @@ export async function GET(req: NextRequest) {
       if (userResponse.ok) {
         const userData = await userResponse.json();
         username = userData.data?.username;
+        userID = userData.data?.id;
       }
     } catch (error) {
       console.error('Failed to fetch X username:', error);
@@ -100,13 +102,12 @@ export async function GET(req: NextRequest) {
       .upsert({
         user_id: user.id,
         platform: "x",
+        platform_account_id: userID,
         account_username: username,
         access_token,
         refresh_token,
         expires_at: expiresAt,
-      }, {
-        onConflict: 'user_id,platform'
-      });
+      }, { onConflict: 'user_id,platform,platform_account_id' });
 
     if (dbError) {
       console.error('Failed to store tokens:', dbError);
