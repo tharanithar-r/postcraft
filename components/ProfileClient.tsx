@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, Mail, LogOut, Twitter, Linkedin, CheckCircle, XCircle, X as XIcon, Loader2, Send } from "lucide-react"
+import { User, Mail, LogOut, Twitter, Linkedin, CheckCircle, XCircle, X as XIcon, Loader2, Send, ArrowLeft } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
 import toast, { Toaster } from "react-hot-toast"
+import { Button, Card, CardBody, CardHeader, Avatar, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Divider } from "@heroui/react"
 
 const FacebookIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -14,7 +15,7 @@ const FacebookIcon = ({ className }: { className?: string }) => (
 
 const DiscordIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
   </svg>
 )
 
@@ -73,14 +74,17 @@ export default function ProfileClient({ profile, socialAccounts, userId }: Profi
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
-  const [showFacebookModal, setShowFacebookModal] = useState(false)
+
+  // HeroUI Modal hooks
+  const { isOpen: isFacebookModalOpen, onOpen: onFacebookModalOpen, onOpenChange: onFacebookModalOpenChange } = useDisclosure()
+  const { isOpen: isTelegramModalOpen, onOpen: onTelegramModalOpen, onOpenChange: onTelegramModalOpenChange } = useDisclosure()
+
   const [availablePages, setAvailablePages] = useState<FacebookPage[]>([])
   const [selectedPages, setSelectedPages] = useState<string[]>([])
   const [isLoadingPages, setIsLoadingPages] = useState(false)
   const [isConnectingPages, setIsConnectingPages] = useState(false)
 
   // Telegram state
-  const [showTelegramModal, setShowTelegramModal] = useState(false)
   const [telegramBotToken, setTelegramBotToken] = useState('')
   const [telegramStep, setTelegramStep] = useState(1) // 1: Instructions, 2: Token, 3: Channels
   const [isValidatingToken, setIsValidatingToken] = useState(false)
@@ -179,7 +183,7 @@ export default function ProfileClient({ profile, socialAccounts, userId }: Profi
         setManualChannelUsername('')
       }
 
-      setShowTelegramModal(true)
+      onTelegramModalOpen()
     } else if (platform === "linkedin") {
       toast.error("LinkedIn integration coming soon!")
     }
@@ -192,7 +196,7 @@ export default function ProfileClient({ profile, socialAccounts, userId }: Profi
     try {
       // Implementation would go here if needed
       toast.success("Pages connected successfully!")
-      setShowFacebookModal(false)
+      onFacebookModalOpenChange()
       setSelectedPages([])
       router.refresh()
     } catch (error) {
@@ -271,7 +275,7 @@ export default function ProfileClient({ profile, socialAccounts, userId }: Profi
       }
 
       toast.success(data.message || 'Channel connected successfully!')
-      setShowTelegramModal(false)
+      onTelegramModalOpenChange()
       router.refresh()
     } catch (error) {
       console.error('Error connecting channel:', error)
@@ -351,727 +355,748 @@ export default function ProfileClient({ profile, socialAccounts, userId }: Profi
   const discordChannels = socialAccounts.filter(acc => acc.platform.toLowerCase() === 'discord')
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-4 md:p-8">
       <Toaster position="top-center" />
 
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-white">Profile</h1>
-          <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          <div className="flex items-center gap-3">
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              onPress={() => router.push('/home')}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-3xl font-bold text-white">Profile</h1>
+          </div>
+          <Button
+            color="danger"
+            variant="flat"
+            startContent={<LogOut className="w-4 h-4" />}
+            onPress={handleLogout}
+            isLoading={isLoggingOut}
           >
-            <LogOut className="w-4 h-4" />
             {isLoggingOut ? "Logging out..." : "Logout"}
-          </button>
+          </Button>
         </div>
 
         {/* User Info Card */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-700">
-          <div className="flex items-start gap-6">
-            {/* Avatar */}
-            <div className="flex-shrink-0">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg">
-                <User className="w-12 h-12 text-white" />
-              </div>
-            </div>
+        <Card className="bg-slate-900/50 backdrop-blur-sm border border-slate-700">
+          <CardBody className="p-8">
+            <div className="flex items-start gap-6">
+              {/* Avatar */}
+              <Avatar
+                icon={<User className="w-12 h-12" />}
+                className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-teal-500"
+              />
 
-            {/* User Details */}
-            <div className="flex-1 space-y-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-1">{profile.name || "User"}</h2>
-                <div className="flex items-center gap-2 text-gray-400">
-                  <Mail className="w-4 h-4" />
-                  <span>{profile.email}</span>
+              {/* User Details */}
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">{profile.name || "User"}</h2>
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Mail className="w-4 h-4" />
+                    <span>{profile.email}</span>
+                  </div>
+                </div>
+
+                <div className="text-sm text-gray-500">
+                  Member since {new Date(profile.created_at).toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric"
+                  })}
                 </div>
               </div>
-
-              <div className="text-sm text-gray-500">
-                Member since {new Date(profile.created_at).toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric"
-                })}
-              </div>
             </div>
-          </div>
-        </div>
+          </CardBody>
+        </Card>
 
         {/* Social Media Connections Card */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-700">
-          <h3 className="text-xl font-bold text-white mb-6">Social Media Accounts</h3>
+        <Card className="bg-slate-900/50 backdrop-blur-sm border border-slate-700">
+          <CardBody className="p-8">
+            <h3 className="text-xl font-bold text-white mb-6">Social Media Accounts</h3>
 
-          <div className="space-y-4">
-            {/* X/Twitter */}
-            <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center">
-                  <Twitter className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-white">X (Twitter)</h4>
-                    {xConnected ? (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-gray-500" />
-                    )}
-                  </div>
-                  {xConnected && xUsername ? (
-                    <p className="text-sm text-gray-400">@{xUsername}</p>
-                  ) : (
-                    <p className="text-sm text-gray-500">Not connected</p>
-                  )}
-                </div>
-              </div>
-
-              {xConnected ? (
-                <button
-                  onClick={() => handleDisconnect("x")}
-                  disabled={disconnecting === "x"}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {disconnecting === "x" ? "Disconnecting..." : "Disconnect"}
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleConnect("x")}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
-
-            {/* Facebook */}
-            <div className="space-y-2">
+            <div className="space-y-4">
+              {/* X/Twitter */}
               <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                    <FacebookIcon className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center">
+                    <Twitter className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-white">Facebook</h4>
-                      {facebookPages.length > 0 && (
+                      <h4 className="font-semibold text-white">X (Twitter)</h4>
+                      {xConnected ? (
                         <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-gray-500" />
                       )}
                     </div>
-                    <p className="text-sm text-gray-400">
-                      {facebookPages.length > 0
-                        ? `${facebookPages.length} page(s) connected`
-                        : "Not connected"
-                      }
-                    </p>
+                    {xConnected && xUsername ? (
+                      <p className="text-sm text-gray-400">@{xUsername}</p>
+                    ) : (
+                      <p className="text-sm text-gray-500">Not connected</p>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  {facebookPages.length > 0 && (
-                    <button
-                      onClick={() => handleConnect("facebook")}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
-                    >
-                      Add More Pages
-                    </button>
-                  )}
-                  {facebookPages.length === 0 ? (
-                    <button
-                      onClick={() => handleConnect("facebook")}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
-                    >
-                      Connect
-                    </button>
-                  ) : null}
-                </div>
+                {xConnected ? (
+                  <button
+                    onClick={() => handleDisconnect("x")}
+                    disabled={disconnecting === "x"}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {disconnecting === "x" ? "Disconnecting..." : "Disconnect"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleConnect("x")}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Connect
+                  </button>
+                )}
               </div>
 
-              {/* Connected Facebook Pages List or No Pages Message */}
-              {facebookConnectedNoPages ? (
-                <div className="ml-16 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
-                  <p className="text-sm text-yellow-300 mb-2">
-                    No Facebook Pages found
-                  </p>
-                  <p className="text-xs text-yellow-400/80 mb-3">
-                    You need to create a Facebook Page to post content. Personal profiles cannot be used for posting.
-                  </p>
+              {/* Telegram */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-blue-400 flex items-center justify-center">
+                      <Send className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-white">Telegram</h4>
+                        {telegramChannels.length > 0 && (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {telegramChannels.length > 0
+                          ? `${telegramChannels.length} channel(s) connected`
+                          : "Not connected"
+                        }
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="flex gap-2">
-                    <a
-                      href="https://www.facebook.com/pages/create"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-xs font-medium"
-                    >
-                      Create Facebook Page
-                    </a>
-                    <button
-                      onClick={() => handleDisconnect("facebook")}
-                      disabled={disconnecting === "facebook"}
-                      className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {disconnecting === "facebook" ? "..." : "Disconnect"}
-                    </button>
-                  </div>
-                </div>
-              ) : facebookPages.length > 0 ? (
-                <div className="ml-16 space-y-2">
-                  {facebookPages.map((page) => (
-                    <div
-                      key={page.id}
-                      className="flex items-center justify-between p-3 bg-gray-700/20 rounded-lg border border-gray-600/50 hover:border-gray-500/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                          <FacebookIcon className="w-4 h-4 text-blue-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-200">
-                            {page.account_username || page.platform_data?.pageName}
-                          </p>
-                          {page.platform_data?.category && (
-                            <p className="text-xs text-gray-500">
-                              {page.platform_data.category}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                    {telegramChannels.length > 0 && (
                       <button
-                        onClick={() => handleDisconnect("facebook", page.platform_account_id!)}
-                        disabled={disconnecting === `facebook-${page.platform_account_id}`}
-                        className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleConnect("telegram")}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
                       >
-                        {disconnecting === `facebook-${page.platform_account_id}` ? "..." : "Disconnect"}
+                        Add More Channels
                       </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Telegram */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-400 flex items-center justify-center">
-                    <Send className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-white">Telegram</h4>
-                      {telegramChannels.length > 0 && (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      {telegramChannels.length > 0
-                        ? `${telegramChannels.length} channel(s) connected`
-                        : "Not connected"
-                      }
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  {telegramChannels.length > 0 && (
-                    <button
-                      onClick={() => handleConnect("telegram")}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
-                    >
-                      Add More Channels
-                    </button>
-                  )}
-                  {telegramChannels.length === 0 ? (
-                    <button
-                      onClick={() => handleConnect("telegram")}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
-                    >
-                      Connect
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Connected Telegram Channels List */}
-              {telegramChannels.length > 0 && (
-                <div className="ml-16 space-y-2">
-                  {telegramChannels.map((channel) => (
-                    <div
-                      key={channel.id}
-                      className="flex items-center justify-between p-3 bg-gray-700/20 rounded-lg border border-gray-600/50 hover:border-gray-500/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-400/20 flex items-center justify-center">
-                          <Send className="w-4 h-4 text-blue-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-200">
-                            {channel.account_username}
-                          </p>
-                          {channel.platform_data?.channelUsername && (
-                            <p className="text-xs text-gray-500">
-                              @{channel.platform_data.channelUsername}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                    )}
+                    {telegramChannels.length === 0 ? (
                       <button
-                        onClick={() => handleDisconnect("telegram", channel.platform_account_id!)}
-                        disabled={disconnecting === `telegram-${channel.platform_account_id}`}
-                        className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleConnect("telegram")}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
                       >
-                        {disconnecting === `telegram-${channel.platform_account_id}` ? "..." : "Disconnect"}
+                        Connect
                       </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Discord */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center">
-                    <DiscordIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-white">Discord</h4>
-                      {discordChannels.length > 0 && (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      {discordChannels.length > 0
-                        ? `${discordChannels.length} channel(s) connected`
-                        : "Not connected"
-                      }
-                    </p>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  {discordChannels.length > 0 && (
-                    <button
-                      onClick={() => handleConnect("discord")}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
-                    >
-                      Add More Channels
-                    </button>
-                  )}
-                  {discordChannels.length === 0 ? (
-                    <button
-                      onClick={() => handleConnect("discord")}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
-                    >
-                      Connect
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Connected Discord Channels List */}
-              {discordChannels.length > 0 && (
-                <div className="ml-16 space-y-2">
-                  {discordChannels.map((channel) => (
-                    <div
-                      key={channel.id}
-                      className="flex items-center justify-between p-3 bg-gray-700/20 rounded-lg border border-gray-600/50 hover:border-gray-500/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                          <DiscordIcon className="w-4 h-4 text-indigo-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-200">
-                            {channel.account_username}
-                            {channel.metadata?.guild_name && (
-                              <span className="text-gray-500"> ({channel.metadata.guild_name})</span>
+                {/* Connected Telegram Channels List */}
+                {telegramChannels.length > 0 && (
+                  <div className="ml-16 space-y-2">
+                    {telegramChannels.map((channel) => (
+                      <div
+                        key={channel.id}
+                        className="flex items-center justify-between p-3 bg-gray-700/20 rounded-lg border border-gray-600/50 hover:border-gray-500/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-400/20 flex items-center justify-center">
+                            <Send className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-200">
+                              {channel.account_username}
+                            </p>
+                            {channel.platform_data?.channelUsername && (
+                              <p className="text-xs text-gray-500">
+                                @{channel.platform_data.channelUsername}
+                              </p>
                             )}
-                          </p>
-                          {channel.metadata?.channel_type !== undefined && (
-                            <p className="text-xs text-gray-500">
-                              {channel.metadata.channel_type === 0 ? 'Text Channel' : 'Announcement Channel'}
-                            </p>
-                          )}
+                          </div>
                         </div>
+                        <button
+                          onClick={() => handleDisconnect("telegram", channel.platform_account_id!)}
+                          disabled={disconnecting === `telegram-${channel.platform_account_id}`}
+                          className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {disconnecting === `telegram-${channel.platform_account_id}` ? "..." : "Disconnect"}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleDisconnect("discord", channel.platform_account_id!)}
-                        disabled={disconnecting === `discord-${channel.platform_account_id}`}
-                        className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {disconnecting === `discord-${channel.platform_account_id}` ? "..." : "Disconnect"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            {/* LinkedIn */}
-            <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center">
-                  <Linkedin className="w-6 h-6 text-white" />
+              {/* Discord */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center">
+                      <DiscordIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-white">Discord</h4>
+                        {discordChannels.length > 0 && (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {discordChannels.length > 0
+                          ? `${discordChannels.length} channel(s) connected`
+                          : "Not connected"
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {discordChannels.length > 0 && (
+                      <button
+                        onClick={() => handleConnect("discord")}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
+                      >
+                        Add More Channels
+                      </button>
+                    )}
+                    {discordChannels.length === 0 ? (
+                      <button
+                        onClick={() => handleConnect("discord")}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
+                      >
+                        Connect
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-white">LinkedIn</h4>
-                    {linkedinConnected ? (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
+
+                {/* Connected Discord Channels List */}
+                {discordChannels.length > 0 && (
+                  <div className="ml-16 space-y-2">
+                    {discordChannels.map((channel) => (
+                      <div
+                        key={channel.id}
+                        className="flex items-center justify-between p-3 bg-gray-700/20 rounded-lg border border-gray-600/50 hover:border-gray-500/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                            <DiscordIcon className="w-4 h-4 text-indigo-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-200">
+                              {channel.account_username}
+                              {channel.metadata?.guild_name && (
+                                <span className="text-gray-500"> ({channel.metadata.guild_name})</span>
+                              )}
+                            </p>
+                            {channel.metadata?.channel_type !== undefined && (
+                              <p className="text-xs text-gray-500">
+                                {channel.metadata.channel_type === 0 ? 'Text Channel' : 'Announcement Channel'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDisconnect("discord", channel.platform_account_id!)}
+                          disabled={disconnecting === `discord-${channel.platform_account_id}`}
+                          className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {disconnecting === `discord-${channel.platform_account_id}` ? "..." : "Disconnect"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* LinkedIn */}
+              <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center">
+                    <Linkedin className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-white">LinkedIn</h4>
+                      {linkedinConnected ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-gray-500" />
+                      )}
+                    </div>
+                    {linkedinConnected && linkedinUsername ? (
+                      <p className="text-sm text-gray-400">@{linkedinUsername}</p>
                     ) : (
-                      <XCircle className="w-4 h-4 text-gray-500" />
+                      <p className="text-sm text-gray-500">Coming soon</p>
                     )}
                   </div>
-                  {linkedinConnected && linkedinUsername ? (
-                    <p className="text-sm text-gray-400">@{linkedinUsername}</p>
-                  ) : (
-                    <p className="text-sm text-gray-500">Coming soon</p>
-                  )}
                 </div>
+
+                {linkedinConnected ? (
+                  <button
+                    onClick={() => handleDisconnect("linkedin")}
+                    disabled={disconnecting === "linkedin"}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {disconnecting === "linkedin" ? "Disconnecting..." : "Disconnect"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleConnect("linkedin")}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium cursor-not-allowed opacity-50"
+                    disabled
+                  >
+                    Coming Soon
+                  </button>
+                )}
               </div>
 
-              {linkedinConnected ? (
-                <button
-                  onClick={() => handleDisconnect("linkedin")}
-                  disabled={disconnecting === "linkedin"}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {disconnecting === "linkedin" ? "Disconnecting..." : "Disconnect"}
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleConnect("linkedin")}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium cursor-not-allowed opacity-50"
-                  disabled
-                >
-                  Coming Soon
-                </button>
-              )}
-            </div>
-          </div>
 
-          {/* Info Message */}
-          <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
-            <p className="text-sm text-blue-300">
-              💡 Connect your social media accounts to start posting and managing your content across platforms.
-            </p>
-          </div>
-        </div>
+              {/* Facebook */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-600 hover:border-gray-500 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
+                      <FacebookIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-white">Facebook</h4>
+                        {facebookPages.length > 0 && (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {facebookPages.length > 0
+                          ? `${facebookPages.length} page(s) connected`
+                          : "Not connected"
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {facebookPages.length > 0 && (
+                      <button
+                        onClick={() => handleConnect("facebook")}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                      >
+                        Add More Pages
+                      </button>
+                    )}
+                    {facebookPages.length === 0 ? (
+                      <button
+                        onClick={() => handleConnect("facebook")}
+                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium cursor-not-allowed opacity-50"
+                        disabled
+                      >
+                        Coming Soon
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Connected Facebook Pages List or No Pages Message */}
+                {facebookConnectedNoPages ? (
+                  <div className="ml-16 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
+                    <p className="text-sm text-yellow-300 mb-2">
+                      No Facebook Pages found
+                    </p>
+                    <p className="text-xs text-yellow-400/80 mb-3">
+                      You need to create a Facebook Page to post content. Personal profiles cannot be used for posting.
+                    </p>
+                    <div className="flex gap-2">
+                      <a
+                        href="https://www.facebook.com/pages/create"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-xs font-medium"
+                      >
+                        Create Facebook Page
+                      </a>
+                      <button
+                        onClick={() => handleDisconnect("facebook")}
+                        disabled={disconnecting === "facebook"}
+                        className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {disconnecting === "facebook" ? "..." : "Disconnect"}
+                      </button>
+                    </div>
+                  </div>
+                ) : facebookPages.length > 0 ? (
+                  <div className="ml-16 space-y-2">
+                    {facebookPages.map((page) => (
+                      <div
+                        key={page.id}
+                        className="flex items-center justify-between p-3 bg-gray-700/20 rounded-lg border border-gray-600/50 hover:border-gray-500/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <FacebookIcon className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-200">
+                              {page.account_username || page.platform_data?.pageName}
+                            </p>
+                            {page.platform_data?.category && (
+                              <p className="text-xs text-gray-500">
+                                {page.platform_data.category}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDisconnect("facebook", page.platform_account_id!)}
+                          disabled={disconnecting === `facebook-${page.platform_account_id}`}
+                          className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {disconnecting === `facebook-${page.platform_account_id}` ? "..." : "Disconnect"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Info Message */}
+            <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+              <p className="text-sm text-blue-300">
+                Connect your social media accounts to start posting and managing your content across platforms.
+              </p>
+            </div>
+          </CardBody>
+        </Card>
       </div>
 
       {/* Facebook Page Selection Modal */}
-      {showFacebookModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-gray-700">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
-              <div>
+      <Modal
+        isOpen={isFacebookModalOpen}
+        onOpenChange={onFacebookModalOpenChange}
+        size="2xl"
+        scrollBehavior="inside"
+        classNames={{
+          base: "bg-slate-800 border border-slate-700",
+          header: "border-b border-slate-700",
+          body: "py-6",
+          footer: "border-t border-slate-700"
+        }}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
                 <h3 className="text-xl font-bold text-white">Select Facebook Pages</h3>
-                <p className="text-sm text-gray-400 mt-1">Choose which pages you want to connect</p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowFacebookModal(false)
-                  setSelectedPages([])
-                }}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <XIcon className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
+                <p className="text-sm text-gray-400 font-normal">Choose which pages you want to connect</p>
+              </ModalHeader>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {isLoadingPages ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                </div>
-              ) : availablePages.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-400 mb-4">No Facebook pages found</p>
-                  <p className="text-sm text-gray-500">
-                    Create a Facebook Page first, then try connecting again.
+              <ModalBody>
+                {isLoadingPages ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                ) : availablePages.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400 mb-4">No Facebook pages found</p>
+                    <p className="text-sm text-gray-500">
+                      Create a Facebook Page first, then try connecting again.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {availablePages.map((page) => {
+                      const isSelected = selectedPages.includes(page.id)
+                      const isAlreadyConnected = facebookPages.some(
+                        fp => fp.platform_account_id === page.id
+                      )
+
+                      return (
+                        <button
+                          key={page.id}
+                          onClick={() => {
+                            if (isAlreadyConnected) return
+                            setSelectedPages(prev =>
+                              prev.includes(page.id)
+                                ? prev.filter(id => id !== page.id)
+                                : [...prev, page.id]
+                            )
+                          }}
+                          disabled={isAlreadyConnected}
+                          className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isAlreadyConnected
+                            ? 'bg-gray-700/30 border-gray-600 opacity-50 cursor-not-allowed'
+                            : isSelected
+                              ? 'bg-blue-600/20 border-blue-500'
+                              : 'bg-gray-700/30 border-gray-600 hover:border-gray-500'
+                            }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
+                              <FacebookIcon className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <p className="font-medium text-white">{page.name}</p>
+                              <p className="text-sm text-gray-400">{page.category}</p>
+                            </div>
+                          </div>
+                          {isAlreadyConnected ? (
+                            <span className="text-xs text-green-500 font-medium">Already Connected</span>
+                          ) : isSelected ? (
+                            <CheckCircle className="w-6 h-6 text-blue-500" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full border-2 border-gray-500" />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </ModalBody>
+
+              <ModalFooter>
+                <div className="flex items-center justify-between w-full">
+                  <p className="text-sm text-gray-400">
+                    {selectedPages.length} page(s) selected
                   </p>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="flat"
+                      onPress={() => {
+                        onClose()
+                        setSelectedPages([])
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      color="primary"
+                      onPress={handleConnectSelectedPages}
+                      isDisabled={selectedPages.length === 0}
+                      isLoading={isConnectingPages}
+                      startContent={!isConnectingPages && <CheckCircle className="w-4 h-4" />}
+                    >
+                      {isConnectingPages
+                        ? "Connecting..."
+                        : `Connect ${selectedPages.length > 0 ? selectedPages.length : ''} Page${selectedPages.length !== 1 ? 's' : ''}`
+                      }
+                    </Button>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {availablePages.map((page) => {
-                    const isSelected = selectedPages.includes(page.id)
-                    const isAlreadyConnected = facebookPages.some(
-                      fp => fp.platform_account_id === page.id
-                    )
-
-                    return (
-                      <button
-                        key={page.id}
-                        onClick={() => {
-                          if (isAlreadyConnected) return
-                          setSelectedPages(prev =>
-                            prev.includes(page.id)
-                              ? prev.filter(id => id !== page.id)
-                              : [...prev, page.id]
-                          )
-                        }}
-                        disabled={isAlreadyConnected}
-                        className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isAlreadyConnected
-                          ? 'bg-gray-700/30 border-gray-600 opacity-50 cursor-not-allowed'
-                          : isSelected
-                            ? 'bg-blue-600/20 border-blue-500'
-                            : 'bg-gray-700/30 border-gray-600 hover:border-gray-500'
-                          }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                            <FacebookIcon className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-medium text-white">{page.name}</p>
-                            <p className="text-sm text-gray-400">{page.category}</p>
-                          </div>
-                        </div>
-                        {isAlreadyConnected ? (
-                          <span className="text-xs text-green-500 font-medium">Already Connected</span>
-                        ) : isSelected ? (
-                          <CheckCircle className="w-6 h-6 text-blue-500" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full border-2 border-gray-500" />
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between p-6 border-t border-gray-700">
-              <p className="text-sm text-gray-400">
-                {selectedPages.length} page(s) selected
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowFacebookModal(false)
-                    setSelectedPages([])
-                  }}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConnectSelectedPages}
-                  disabled={selectedPages.length === 0 || isConnectingPages}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isConnectingPages ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    `Connect ${selectedPages.length > 0 ? selectedPages.length : ''} Page${selectedPages.length !== 1 ? 's' : ''}`
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
       {/* Telegram Bot Connection Modal */}
-      {showTelegramModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-gray-700">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
-              <div>
+      <Modal
+        isOpen={isTelegramModalOpen}
+        onOpenChange={onTelegramModalOpenChange}
+        size="2xl"
+        scrollBehavior="inside"
+        classNames={{
+          base: "bg-slate-800 border border-slate-700",
+          header: "border-b border-slate-700",
+          body: "py-6",
+          footer: "border-t border-slate-700"
+        }}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
                 <h3 className="text-xl font-bold text-white">Connect Telegram Bot</h3>
-                <p className="text-sm text-gray-400 mt-1">Step {telegramStep} of 3</p>
-              </div>
-              <button
-                onClick={() => setShowTelegramModal(false)}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <XIcon className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
+                <p className="text-sm text-gray-400 font-normal">Step {telegramStep} of 3</p>
+              </ModalHeader>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {telegramStep === 1 && (
-                <div className="space-y-6">
-                  <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
-                    <h4 className="font-semibold text-blue-300 mb-2">📱 Step 1: Create a Telegram Bot</h4>
-                    <ol className="text-sm text-blue-200 space-y-2 list-decimal list-inside">
-                      <li>Open Telegram and search for <code className="bg-gray-700 px-1 rounded">@BotFather</code></li>
-                      <li>Send the command <code className="bg-gray-700 px-1 rounded">/newbot</code></li>
-                      <li>Choose a name for your bot (e.g., "My Posting Bot")</li>
-                      <li>Choose a username ending in "bot" (e.g., "myposting_bot")</li>
-                      <li>Copy the bot token that @BotFather gives you</li>
-                    </ol>
-                    <a
-                      href="https://t.me/BotFather"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm"
-                    >
-                      <Send className="w-4 h-4" />
-                      Open @BotFather
-                    </a>
-                  </div>
-
-                  <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
-                    <h4 className="font-semibold text-yellow-300 mb-2">🔧 Step 2: Add Bot to Channel</h4>
-                    <ol className="text-sm text-yellow-200 space-y-2 list-decimal list-inside">
-                      <li>Go to your Telegram channel</li>
-                      <li>Click on channel name → "Manage Channel"</li>
-                      <li>Go to "Administrators" → "Add Administrator"</li>
-                      <li>Search for your bot username</li>
-                      <li>Add bot and give "Post Messages" permission</li>
-                    </ol>
-                  </div>
-
-                  <button
-                    onClick={() => setTelegramStep(2)}
-                    className="w-full px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
-                  >
-                    I've Created My Bot → Next
-                  </button>
-                </div>
-              )}
-
-              {telegramStep === 2 && (
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="font-semibold text-white mb-3">🔑 Enter Your Bot Token</h4>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Paste the token that @BotFather gave you. It looks like: <code className="bg-gray-700 px-1 rounded text-xs">123456789:ABCdefGHI...</code>
-                    </p>
-                    <input
-                      type="text"
-                      value={telegramBotToken}
-                      onChange={(e) => setTelegramBotToken(e.target.value)}
-                      placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setTelegramStep(1)}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      onClick={handleValidateTelegramToken}
-                      disabled={!telegramBotToken.trim() || isValidatingToken}
-                      className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {isValidatingToken ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Validating...
-                        </>
-                      ) : (
-                        'Validate & Continue'
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: Channel Selection or Manual Entry */}
-              {telegramStep === 3 && (
-                <div className="space-y-6">
-                  {telegramBotInfo && (
-                    <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
-                      <h4 className="font-semibold text-green-300 mb-2">✅ Bot Validated</h4>
-                      <p className="text-sm text-green-200">
-                        Bot: <strong>@{telegramBotInfo.username}</strong> ({telegramBotInfo.first_name})
-                      </p>
-                    </div>
-                  )}
-
-                  {detectedChannels.length > 0 ? (
-                    <div>
-                      <h4 className="font-semibold text-white mb-3">📢 Detected Channels</h4>
-                      <p className="text-sm text-gray-400 mb-4">
-                        Click on a channel to connect:
-                      </p>
-                      <div className="space-y-2">
-                        {detectedChannels.map((channel) => (
-                          <button
-                            key={channel.id}
-                            onClick={() => handleConnectTelegramChannel(channel.username ? `@${channel.username}` : channel.id.toString())}
-                            disabled={isConnectingChannel}
-                            className="w-full flex items-center justify-between p-3 bg-gray-700/30 hover:bg-gray-700/50 border border-gray-600 rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Send className="w-5 h-5 text-blue-400" />
-                              <div className="text-left">
-                                <p className="font-medium text-white">{channel.title || `Channel ${channel.id}`}</p>
-                                {channel.username && (
-                                  <p className="text-sm text-gray-400">@{channel.username}</p>
-                                )}
-                              </div>
-                            </div>
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {(needsManualEntry || detectedChannels.length > 0) && (
-                    <div>
-                      <h4 className="font-semibold text-white mb-3">
-                        {detectedChannels.length > 0 ? '📝 Or Enter Channel Manually' : '📝 Enter Channel Username'}
-                      </h4>
-                      <p className="text-sm text-gray-400 mb-4">
-                        Enter your channel username (with or without @):
-                      </p>
-                      <input
-                        type="text"
-                        value={manualChannelUsername}
-                        onChange={(e) => setManualChannelUsername(e.target.value)}
-                        placeholder="@mychannel or mychannel"
-                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
-                      />
-                      <button
-                        onClick={() => handleConnectTelegramChannel()}
-                        disabled={!manualChannelUsername.trim() || isConnectingChannel}
-                        className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              <ModalBody>
+                {telegramStep === 1 && (
+                  <div className="space-y-6">
+                    <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-300 mb-2">📱 Step 1: Create a Telegram Bot</h4>
+                      <ol className="text-sm text-blue-200 space-y-2 list-decimal list-inside">
+                        <li>Open Telegram and search for <code className="bg-gray-700 px-1 rounded">@BotFather</code></li>
+                        <li>Send the command <code className="bg-gray-700 px-1 rounded">/newbot</code></li>
+                        <li>Choose a name for your bot (e.g., "My Posting Bot")</li>
+                        <li>Choose a username ending in "bot" (e.g., "myposting_bot")</li>
+                        <li>Copy the bot token that @BotFather gives you</li>
+                      </ol>
+                      <a
+                        href="https://t.me/BotFather"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm"
                       >
-                        {isConnectingChannel ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Connecting...
-                          </>
-                        ) : (
-                          'Connect Channel'
-                        )}
-                      </button>
+                        <Send className="w-4 h-4" />
+                        Open @BotFather
+                      </a>
                     </div>
-                  )}
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setTelegramStep(2)}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+                      <h4 className="font-semibold text-yellow-300 mb-2">🔧 Step 2: Add Bot to Channel</h4>
+                      <ol className="text-sm text-yellow-200 space-y-2 list-decimal list-inside">
+                        <li>Go to your Telegram channel</li>
+                        <li>Click on channel name → "Manage Channel"</li>
+                        <li>Go to "Administrators" → "Add Administrator"</li>
+                        <li>Search for your bot username</li>
+                        <li>Add bot and give "Post Messages" permission</li>
+                      </ol>
+                    </div>
+
+                    <Button
+                      color="success"
+                      onPress={() => setTelegramStep(2)}
+                      className="w-full"
+                      size="lg"
                     >
-                      ← Back
-                    </button>
+                      I've Created My Bot → Next
+                    </Button>
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                )}
+
+                {telegramStep === 2 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-semibold text-white mb-3">🔑 Enter Your Bot Token</h4>
+                      <p className="text-sm text-gray-400 mb-4">
+                        Paste the token that @BotFather gave you. It looks like: <code className="bg-gray-700 px-1 rounded text-xs">123456789:ABCdefGHI...</code>
+                      </p>
+                      <Input
+                        type="text"
+                        value={telegramBotToken}
+                        onChange={(e) => setTelegramBotToken(e.target.value)}
+                        placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                        variant="bordered"
+                        classNames={{
+                          input: "text-white",
+                          inputWrapper: "bg-slate-700 border-slate-600"
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        variant="flat"
+                        onPress={() => setTelegramStep(1)}
+                      >
+                        ← Back
+                      </Button>
+                      <Button
+                        color="primary"
+                        onPress={handleValidateTelegramToken}
+                        isDisabled={!telegramBotToken.trim()}
+                        isLoading={isValidatingToken}
+                        className="flex-1"
+                        startContent={!isValidatingToken && <CheckCircle className="w-4 h-4" />}
+                      >
+                        {isValidatingToken ? 'Validating...' : 'Validate & Continue'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Channel Selection or Manual Entry */}
+                {telegramStep === 3 && (
+                  <div className="space-y-6">
+                    {telegramBotInfo && (
+                      <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+                        <h4 className="font-semibold text-green-300 mb-2">✅ Bot Validated</h4>
+                        <p className="text-sm text-green-200">
+                          Bot: <strong>@{telegramBotInfo.username}</strong> ({telegramBotInfo.first_name})
+                        </p>
+                      </div>
+                    )}
+
+                    {detectedChannels.length > 0 ? (
+                      <div>
+                        <h4 className="font-semibold text-white mb-3">📢 Detected Channels</h4>
+                        <p className="text-sm text-gray-400 mb-4">
+                          Click on a channel to connect:
+                        </p>
+                        <div className="space-y-2">
+                          {detectedChannels.map((channel) => (
+                            <button
+                              key={channel.id}
+                              onClick={() => handleConnectTelegramChannel(channel.username ? `@${channel.username}` : channel.id.toString())}
+                              disabled={isConnectingChannel}
+                              className="w-full flex items-center justify-between p-3 bg-gray-700/30 hover:bg-gray-700/50 border border-gray-600 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Send className="w-5 h-5 text-blue-400" />
+                                <div className="text-left">
+                                  <p className="font-medium text-white">{channel.title || `Channel ${channel.id}`}</p>
+                                  {channel.username && (
+                                    <p className="text-sm text-gray-400">@{channel.username}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {(needsManualEntry || detectedChannels.length > 0) && (
+                      <div>
+                        <h4 className="font-semibold text-white mb-3">
+                          {detectedChannels.length > 0 ? '📝 Or Enter Channel Manually' : '📝 Enter Channel Username'}
+                        </h4>
+                        <p className="text-sm text-gray-400 mb-4">
+                          Enter your channel username (with or without @):
+                        </p>
+                        <Input
+                          type="text"
+                          value={manualChannelUsername}
+                          onChange={(e) => setManualChannelUsername(e.target.value)}
+                          placeholder="@mychannel or mychannel"
+                          variant="bordered"
+                          classNames={{
+                            input: "text-white",
+                            inputWrapper: "bg-slate-700 border-slate-600"
+                          }}
+                          className="mb-4"
+                        />
+                        <Button
+                          color="success"
+                          onPress={() => handleConnectTelegramChannel()}
+                          isDisabled={!manualChannelUsername.trim()}
+                          isLoading={isConnectingChannel}
+                          className="w-full"
+                          startContent={!isConnectingChannel && <CheckCircle className="w-4 h-4" />}
+                        >
+                          {isConnectingChannel ? 'Connecting...' : 'Connect Channel'}
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <Button
+                        variant="flat"
+                        onPress={() => setTelegramStep(2)}
+                      >
+                        ← Back
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

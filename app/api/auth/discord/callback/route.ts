@@ -41,13 +41,13 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error('Discord OAuth error:', error);
       return NextResponse.redirect(
-        new URL(`/home?error=${error}`, req.url)
+        new URL(`/profile?error=${error}`, req.url)
       );
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL('/home?error=missing_params', req.url)
+        new URL('/profile?error=missing_params', req.url)
       );
     }
 
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     if (state !== storedState) {
       return NextResponse.redirect(
-        new URL('/home?error=state_mismatch', req.url)
+        new URL('/profile?error=state_mismatch', req.url)
       );
     }
 
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       const errorData = await tokenResponse.text();
       console.error('Discord token exchange failed:', errorData);
       return NextResponse.redirect(
-        new URL('/home?error=token_exchange_failed', req.url)
+        new URL('/profile?error=token_exchange_failed', req.url)
       );
     }
 
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
 
     if (channels.length === 0) {
       return NextResponse.redirect(
-        new URL('/home?error=no_channels_found', req.url)
+        new URL('/profile?error=no_channels_found', req.url)
       );
     }
 
@@ -164,19 +164,19 @@ export async function GET(req: NextRequest) {
     if (dbError) {
       console.error('Failed to store Discord channels:', dbError);
       return NextResponse.redirect(
-        new URL('/home?error=db_error', req.url)
+        new URL('/profile?error=db_error', req.url)
       );
     }
 
     cookieStore.delete('discord_state');
 
     return NextResponse.redirect(
-      new URL(`/home?connected=discord&channels=${channels.length}`, req.url)
+      new URL(`/profile?connected=discord&channels=${channels.length}`, req.url)
     );
   } catch (error) {
     console.error('Discord OAuth callback error:', error);
     return NextResponse.redirect(
-      new URL('/home?error=callback_failed', req.url)
+      new URL('/profile?error=callback_failed', req.url)
     );
   }
 }

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { createClient } from '@/utils/supabase/server';
 import { refreshXToken, isTokenExpired } from './x-token-refresh';
 
 interface XApiRequestOptions {
@@ -26,6 +26,8 @@ export async function makeXApiRequest<T = any>(
   options: XApiRequestOptions = {}
 ): Promise<XApiResponse<T>> {
   try {
+    const supabase = await createClient();
+
     // Get user's X tokens
     const { data: tokenData, error: fetchError } = await supabase
       .from('social_accounts')
@@ -45,7 +47,7 @@ export async function makeXApiRequest<T = any>(
     // Check if token needs refresh
     if (isTokenExpired(tokenData.expires_at)) {
       console.log('Token expired, refreshing...');
-      
+
       const refreshResult = await refreshXToken(tokenData.refresh_token);
 
       if (!refreshResult.success) {
@@ -56,7 +58,8 @@ export async function makeXApiRequest<T = any>(
       }
 
       // Update tokens in database
-      await supabase
+      const supabaseForUpdate = await createClient();
+      await supabaseForUpdate
         .from('social_accounts')
         .update({
           access_token: refreshResult.accessToken,

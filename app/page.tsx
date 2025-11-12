@@ -1,9 +1,13 @@
-import Signup from '@/components/signup'
-import React from 'react'
-const page = () => {
-  return (
-    <Signup/>
-  )
-}
+import { redirect } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
 
-export default page
+export default async function RootPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    redirect('/home')
+  } else {
+    redirect('/login')
+  }
+}

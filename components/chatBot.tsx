@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Plus, Trash2, Send, MessageSquare, ChevronDown, Check, X as XIcon, Loader2, RefreshCw, CheckCircle } from "lucide-react"
+import { Plus, Trash2, Send, MessageSquare, ChevronDown, Check, X as XIcon, Loader2, RefreshCw, CheckCircle, Search, Menu, LogOut, User as UserIcon } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
+import { useRouter } from "next/navigation"
 import toast, { Toaster } from "react-hot-toast"
 import { checkAndRefreshAllPlatforms } from "@/lib/token-refresh"
+import { Input, Button, Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Divider } from "@heroui/react"
 
 interface Message {
   role: "user" | "assistant"
@@ -46,11 +48,15 @@ export default function ChatBot() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string>("")
+  const [userEmail, setUserEmail] = useState<string>("")
   const [connectedPlatforms, setConnectedPlatforms] = useState<SocialAccount[]>([])
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
   const [showPlatformMenu, setShowPlatformMenu] = useState(false)
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
   const [isApproving, setIsApproving] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const platformMenuRef = useRef<HTMLDivElement>(null)
 
@@ -92,6 +98,8 @@ export default function ChatBot() {
 
       if (user) {
         setUserId(user.id)
+        setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'User')
+        setUserEmail(user.email || '')
 
         // Fetch connected platforms
         const { data: platforms } = await supabase
@@ -190,7 +198,7 @@ export default function ChatBot() {
         }
       }
 
-      const response = await fetch('http://localhost:5678/webhook-test/generate-draft', {
+      const response = await fetch('http://localhost:5678/webhook/generate-draft', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -301,7 +309,7 @@ export default function ChatBot() {
         }
       }
 
-      const response = await fetch('http://localhost:5678/webhook-test/approve-post', {
+      const response = await fetch('http://localhost:5678/webhook/approve-post', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

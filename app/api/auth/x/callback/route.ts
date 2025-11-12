@@ -21,13 +21,13 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error('X OAuth error:', error);
       return NextResponse.redirect(
-        new URL(`/home?error=${error}`, req.url)
+        new URL(`/profile?error=${error}`, req.url)
       );
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL('/home?error=missing_params', req.url)
+        new URL('/profile?error=missing_params', req.url)
       );
     }
 
@@ -38,13 +38,13 @@ export async function GET(req: NextRequest) {
 
     if (state !== storedState) {
       return NextResponse.redirect(
-        new URL('/home?error=state_mismatch', req.url)
+        new URL('/profile?error=state_mismatch', req.url)
       );
     }
 
     if (!storedVerifier) {
       return NextResponse.redirect(
-        new URL('/home?error=missing_verifier', req.url)
+        new URL('/profile?error=missing_verifier', req.url)
       );
     }
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       const errorData = await tokenResponse.text();
       console.error('Token exchange failed:', errorData);
       return NextResponse.redirect(
-        new URL('/home?error=token_exchange_failed', req.url)
+        new URL('/profile?error=token_exchange_failed', req.url)
       );
     }
 
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
     if (dbError) {
       console.error('Failed to store tokens:', dbError);
       return NextResponse.redirect(
-        new URL('/home?error=db_error', req.url)
+        new URL('/profile?error=db_error', req.url)
       );
     }
 
@@ -120,12 +120,12 @@ export async function GET(req: NextRequest) {
     cookieStore.delete('x_state');
 
     return NextResponse.redirect(
-      new URL('/home?connected=x', req.url)
+      new URL('/profile?connected=x', req.url)
     );
   } catch (error) {
     console.error('X OAuth callback error:', error);
     return NextResponse.redirect(
-      new URL('/home?error=callback_failed', req.url)
+      new URL('/profile?error=callback_failed', req.url)
     );
   }
 }

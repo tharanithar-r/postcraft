@@ -1,8 +1,8 @@
-import ChatBot from "@/components/chatBot"
+import ChatBotModern from "@/components/chatBotModern"
 
 const home = () => {
   return (
-    <ChatBot/>
+    <ChatBotModern/>
   )
 }
 
